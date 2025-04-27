@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Youtube Playlist Embed</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f3f4f6;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    .container {
+      background-color: white;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+      width: 100%;
+      max-width: 600px;
+      text-align: center;
+    }
+
+    h2 {
+      font-size: 1.6em;
+      color: #333;
+      margin-bottom: 20px;
+    }
+
+    input,
+    button {
+      width: 100%;
+      padding: 12px;
+      margin: 12px 0;
+      border-radius: 8px;
+      border: 1px solid #ddd;
+      font-size: 1em;
+      color: #333;
+      transition: all 0.3s ease;
+    }
+
+    input:focus,
+    button:focus {
+      outline: none;
+      border-color: #4CAF50;
+    }
+
+    button {
+      background-color: #4CAF50;
+      color: white;
+      cursor: pointer;
+      font-weight: bold;
+      transition: background-color 0.3s;
+    }
+
+    button:hover {
+      background-color: #45a049;
+    }
+
+    .video-box {
+      margin-top: 30px;
+      max-height: 350px;
+      overflow-y: auto;
+      border-radius: 8px;
+      border: 1px solid #e0e0e0;
+      padding: 15px;
+      background-color: #f9fafb;
+      box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.05);
+    }
+
+    .video-item {
+      background-color: #e9f5e9;
+      padding: 12px;
+      margin-bottom: 12px;
+      border-radius: 8px;
+      font-size: 14px;
+      text-align: left;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+      word-wrap: break-word;
+    }
+
+    .copy-all-button {
+      background-color: #2196F3;
+      color: white;
+      border: none;
+      cursor: pointer;
+      margin-top: 20px;
+      font-weight: bold;
+      transition: background-color 0.3s;
+    }
+
+    .copy-all-button:hover {
+      background-color: #1e88e5;
+    }
+
+    .copy-all-button:active {
+      background-color: #1c7cc1;
+    }
+
+    .video-item:hover {
+      background-color: #d0f0d0;
+    }
+
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h2>Nhập ID danh sách phát YouTube</h2>
+    <input type="text" id="playlistId" placeholder="VD: PL_-VfJajZj0Uo72G_6tSY4NRLpmffeXSA" />
+    <button onclick="loadVideos()">Tải Video</button>
+
+    <div class="video-box" id="videoBox"></div>
+
+    <button class="copy-all-button" onclick="copyAllLinks()">Sao chép tất cả liên kết</button>
+  </div>
+
+  <script>
+    let nextPageToken = null;
+    let videoLinks = [];
+
+    async function loadVideos() {
+      const playlistId = document.getElementById('playlistId').value.trim();
+      if (!playlistId) {
+        alert('Vui lòng nhập ID danh sách phát');
+        return;
+      }
+
+      const apiKey = 'AIzaSyAtRnOZWPF_SwCctliSo6eT6TLeZOOHNcw';
+      const url = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${playlistId}&key=${apiKey}&maxResults=50${nextPageToken ? `&pageToken=${nextPageToken}` : ''}`;
+
+      try {
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (data.items) {
+          const videoBox = document.getElementById('videoBox');
+          data.items.forEach(item => {
+            const videoId = item.snippet.resourceId.videoId;
+            const videoUrl = `https://www.youtube.com/embed/${videoId}`;
+            const videoElement = document.createElement('div');
+            videoElement.className = 'video-item';
+            videoElement.innerText = videoUrl;
+            videoBox.appendChild(videoElement);
+
+            // Lưu video URL vào mảng
+            videoLinks.push(videoUrl);
+          });
+        }
+
+        // Nếu có nextPageToken, cập nhật để tải thêm video
+        nextPageToken = data.nextPageToken || null;
+        if (nextPageToken) {
+          loadVideos(); // Tải thêm video nếu có nextPageToken
+        } else {
+          alert('Đã tải hết video.');
+        }
+      } catch (error) {
+        alert('Có lỗi xảy ra. Vui lòng thử lại!');
+      }
+    }
+
+    function copyAllLinks() {
+      const text = videoLinks.join('\n');  // Nối tất cả các video URL lại với nhau
+      const tempInput = document.createElement('textarea');
+      tempInput.value = text;
+      document.body.appendChild(tempInput);
+      tempInput.select();
+      document.execCommand('copy');
+      document.body.removeChild(tempInput);
+      alert('Đã sao chép tất cả liên kết!');
+    }
+  </script>
+</body>
+
+</html>
