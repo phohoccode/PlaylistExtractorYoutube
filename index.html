@@ -9,19 +9,22 @@
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css"
       rel="stylesheet"
     />
+    <!-- Thêm FontAwesome CDN cho icon -->
+    <link
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+      rel="stylesheet"
+    />
     <style>
       body {
         background-color: #f8f9fa;
         padding: 30px;
       }
-
       .container {
         background-color: white;
         padding: 30px;
         border-radius: 10px;
         box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
       }
-
       .video-box {
         margin-top: 30px;
         max-height: 350px;
@@ -31,31 +34,45 @@
         padding: 15px;
         background-color: #f9fafb;
         box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.05);
+        display: none; /* Ẩn video box ban đầu */
       }
-
       .video-item {
+        display: flex;
+        align-items: center;
         background-color: #e9f5e9;
         padding: 12px;
         margin-bottom: 12px;
         border-radius: 8px;
         font-size: 14px;
-        text-align: left;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-        word-wrap: break-word;
         cursor: pointer;
       }
-
+      .video-item img {
+        width: 80px;
+        height: 45px;
+        object-fit: cover;
+        border-radius: 4px;
+        margin-right: 12px;
+      }
       .video-item:hover {
         background-color: #d0f0d0;
       }
-
+      .json-box {
+        margin-top: 20px;
+        display: none; /* Ẩn json box ban đầu */
+        padding: 15px;
+        background-color: #f1f1f1;
+        border-radius: 8px;
+        font-family: monospace;
+        white-space: pre-wrap;
+        max-height: 300px;
+        overflow-y: auto;
+      }
       .history-box {
         margin-top: 20px;
         padding: 10px;
         background-color: #f1f1f1;
         border-radius: 8px;
       }
-
       .history-item {
         padding: 8px;
         margin-bottom: 8px;
@@ -65,28 +82,19 @@
         font-size: 14px;
         transition: background-color 0.3s;
       }
-
       .history-item:hover {
         background-color: #e0f7fa;
       }
-
       .copy-all-button {
         background-color: #2196f3;
         color: white;
         border: none;
         cursor: pointer;
         font-weight: bold;
-        transition: background-color 0.3s;
       }
-
       .copy-all-button:hover {
         background-color: #1e88e5;
       }
-
-      .copy-all-button:active {
-        background-color: #1c7cc1;
-      }
-
       .toast-container {
         position: fixed;
         top: 20px;
@@ -109,34 +117,43 @@
           placeholder="VD: PL_-VfJajZj0Uo72G_6tSY4NRLpmffeXSA"
         />
         <button class="btn btn-success" onclick="loadVideos()">
-          Tải Video
+          Lấy dữ liệu
         </button>
       </div>
 
       <!-- Video Box -->
       <div class="video-box" id="videoBox"></div>
 
-      <div class="d-flex gap-4 mt-3">
+      <!-- JSON Box -->
+      <div class="json-box" id="jsonBox"></div>
+
+      <div class="d-flex gap-2 mt-3 flex-wrap">
         <button
-          class="copy-all-button btn btn-primary w-30"
+          class="copy-all-button btn btn-primary"
           onclick="copyAllLinks()"
         >
-          Sao chép tất cả liên kết
+          <i class="fas fa-copy"></i> Sao chép tất cả liên kết
         </button>
-        <button class="btn btn-warning w-30" onclick="refreshVideos()">
-          Làm mới
+        <button class="btn btn-info" onclick="copyJsonData()">
+          <i class="fas fa-file-alt"></i> Sao chép JSON
         </button>
-        <button class="btn btn-danger w-30" onclick="resetData()">
-          Xóa dữ liệu
+        <button class="btn btn-warning" onclick="refreshVideos()">
+          <i class="fas fa-sync-alt"></i> Làm mới
+        </button>
+        <button class="btn btn-danger" onclick="resetData()">
+          <i class="fas fa-trash"></i> Xóa dữ liệu
+        </button>
+        <button class="btn btn-secondary" onclick="toggleJsonBox()">
+          <i class="fas fa-code"></i> Hiển thị JSON
         </button>
       </div>
 
       <!-- Lịch sử -->
       <div class="history-box mt-4" id="historySection">
-        <div class="d-flex gap-3 justify-content-between align-items-center mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
           <h3>Lịch sử</h3>
-          <button class="btn btn-danger w-30" onclick="clearHistory()">
-            Xóa lịch sử
+          <button class="btn btn-danger" onclick="clearHistory()">
+            <i class="fas fa-trash-alt"></i> Xóa lịch sử
           </button>
         </div>
         <div id="historyList"></div>
@@ -169,153 +186,178 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 
     <script>
+      const apiKey = "AIzaSyAtRnOZWPF_SwCctliSo6eT6TLeZOOHNcw";
       let nextPageToken = null;
       let videoLinks = [];
+      let videoDetails = [];
       let history = JSON.parse(localStorage.getItem("history")) || [];
 
-      // Hiển thị lịch sử ID danh sách phát
       function displayHistory() {
         const historySection = document.getElementById("historySection");
         const historyList = document.getElementById("historyList");
-        historyList.innerHTML = ""; // Xóa danh sách hiện tại
-
+        historyList.innerHTML = "";
         if (history.length === 0) {
-          historySection.style.display = "none"; // Ẩn phần lịch sử nếu không có dữ liệu
+          historySection.style.display = "none";
         } else {
-          historySection.style.display = "block"; // Hiển thị phần lịch sử nếu có dữ liệu
+          historySection.style.display = "block";
           history.forEach((id) => {
-            const historyItem = document.createElement("div");
-            historyItem.className = "history-item";
-            historyItem.innerText = id;
-            historyItem.onclick = () => {
+            const item = document.createElement("div");
+            item.className = "history-item";
+            item.innerText = id;
+            item.onclick = () => {
               document.getElementById("playlistId").value = id;
-              loadVideos(); // Tải lại video với ID này
+              resetState();
+              loadVideos();
             };
-            historyList.appendChild(historyItem);
+            historyList.appendChild(item);
           });
         }
       }
 
-      // Hiển thị thông báo Toast
-      function showToast(message) {
-        const toastBody = document.getElementById("toastBody");
-        toastBody.innerText = message;
-        const toast = new bootstrap.Toast(document.getElementById("toast"));
-        toast.show();
+      function showToast(msg) {
+        document.getElementById("toastBody").innerText = msg;
+        new bootstrap.Toast(document.getElementById("toast")).show();
       }
 
       async function loadVideos() {
         const playlistId = document.getElementById("playlistId").value.trim();
-        if (!playlistId) {
-          showToast("Vui lòng nhập ID danh sách phát");
-          return;
-        }
-
-        // Lưu vào lịch sử nếu chưa có
+        if (!playlistId) return showToast("Vui lòng nhập ID danh sách phát");
         if (!history.includes(playlistId)) {
           history.push(playlistId);
           localStorage.setItem("history", JSON.stringify(history));
         }
-
-        const apiKey = "AIzaSyAtRnOZWPF_SwCctliSo6eT6TLeZOOHNcw";
-        const url = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=${playlistId}&key=${apiKey}&maxResults=50${
-          nextPageToken ? `&pageToken=${nextPageToken}` : ""
-        }`;
-
         try {
-          const response = await fetch(url);
-          const data = await response.json();
+          const plUrl = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=50&playlistId=${playlistId}&key=${apiKey}${
+            nextPageToken ? `&pageToken=${nextPageToken}` : ""
+          }`;
+          const plRes = await fetch(plUrl);
+          const plData = await plRes.json();
+          if (!plData.items) throw new Error("Không lấy được playlist");
 
-          if (data.items) {
-            const videoBox = document.getElementById("videoBox");
-            videoBox.innerHTML = ""; // Reset video box
+          // Lấy IDS
+          const ids = plData.items
+            .map((i) => i.snippet.resourceId.videoId)
+            .join(",");
+          const vidUrl = `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails&id=${ids}&key=${apiKey}`;
+          const vidRes = await fetch(vidUrl);
+          const vidData = await vidRes.json();
 
-            data.items.forEach((item) => {
-              const videoId = item.snippet.resourceId.videoId;
-              const videoUrl = `https://www.youtube.com/embed/${videoId}`;
-              const videoElement = document.createElement("div");
-              videoElement.className = "video-item";
-              videoElement.innerText = videoUrl;
-              videoElement.onclick = () => copyLink(videoUrl); // Thêm sự kiện sao chép khi nhấn vào video
-              videoBox.appendChild(videoElement);
+          const box = document.getElementById("videoBox");
+          if (!nextPageToken) box.innerHTML = "";
 
-              // Lưu video URL vào mảng
-              videoLinks.push(videoUrl);
+          vidData.items.forEach((video) => {
+            const id = video.id;
+            const title = video.snippet.title;
+            const thumb = video.snippet.thumbnails.default.url;
+            const pub = video.snippet.publishedAt;
+            const dur = formatDuration(video.contentDetails.duration);
+            const embed = `https://www.youtube.com/embed/${id}`;
+            videoLinks.push(embed);
+            videoDetails.push({
+              id,
+              title,
+              thumbnail: thumb,
+              publishedAt: pub,
+              duration: dur,
+              url: embed,
             });
-          }
 
-          // Nếu có nextPageToken, cập nhật để tải thêm video
-          nextPageToken = data.nextPageToken || null;
-          if (nextPageToken) {
-            loadVideos(); // Tải thêm video nếu có nextPageToken
-          } else {
-            showToast("Đã tải hết video.");
-          }
-        } catch (error) {
-          showToast("Có lỗi xảy ra. Vui lòng thử lại!");
+            const div = document.createElement("div");
+            div.className = "video-item";
+            div.innerHTML = `<img src="${thumb}" alt=""><div><b>${title}</b><br><small>Thời lượng: ${dur}</small></div>`;
+            div.onclick = () => copyLink(embed);
+            box.appendChild(div);
+          });
+
+          nextPageToken = plData.nextPageToken || null;
+          if (nextPageToken) await loadVideos();
+          else showToast("Hoàn thành tải");
+
+          // Hiện video box
+          document.getElementById("videoBox").style.display = "block";
+          displayHistory();
+        } catch (e) {
+          console.error(e);
+          showToast("Lỗi khi tải dữ liệu");
         }
-
-        displayHistory(); // Cập nhật lại danh sách lịch sử
       }
 
-      // Sao chép tất cả liên kết
+      function formatDuration(dur) {
+        const m = dur.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+        const h = parseInt(m[1] || 0),
+          min = parseInt(m[2] || 0),
+          s = parseInt(m[3] || 0);
+        return `${h ? h + ":" : ""}${String(min).padStart(2, "0")}:${String(
+          s
+        ).padStart(2, "0")}`;
+      }
+
       function copyAllLinks() {
-        const text = videoLinks.join("\n"); // Nối tất cả các video URL lại với nhau
-        const tempInput = document.createElement("textarea");
-        tempInput.value = text;
-        document.body.appendChild(tempInput);
-        tempInput.select();
-        document.execCommand("copy");
-        document.body.removeChild(tempInput);
-        showToast("Đã sao chép tất cả liên kết!");
+        navigator.clipboard.writeText(videoLinks.join("\n")).then(() => {
+          showToast("Đã sao chép tất cả liên kết");
+          videoLinks = []; // Xóa bộ nhớ sau khi sao chép
+        });
       }
 
-      // Hàm sao chép liên kết của video cụ thể khi người dùng nhấn vào
       function copyLink(url) {
-        const tempInput = document.createElement("textarea");
-        tempInput.value = url;
-        document.body.appendChild(tempInput);
-        tempInput.select();
-        document.execCommand("copy");
-        document.body.removeChild(tempInput);
-        showToast("Đã sao chép liên kết video!");
+        navigator.clipboard.writeText(url).then(() => {
+          showToast("Đã sao chép liên kết");
+          videoLinks = []; // Xóa bộ nhớ sau khi sao chép
+        });
       }
 
-      // Làm mới dữ liệu
-      function refreshVideos() {
-        // Xóa các video đã tải
-        document.getElementById("videoBox").innerHTML = "";
-        videoLinks = [];
-        nextPageToken = null;
+      function copyJsonData() {
+        if (!videoDetails.length) return showToast("Không có dữ liệu JSON");
+        navigator.clipboard
+          .writeText(JSON.stringify(videoDetails, null, 2))
+          .then(() => {
+            showToast("Đã sao chép JSON");
+            videoDetails = []; // Xóa bộ nhớ sau khi sao chép
+          });
+      }
 
-        // Lấy lại video với ID playlist hiện tại
+      function refreshVideos() {
+        nextPageToken = null;
+        videoLinks = [];
+        videoDetails = [];
         loadVideos();
       }
 
-      // Reset dữ liệu
       function resetData() {
-        // Xóa text trong input
         document.getElementById("playlistId").value = "";
-
-        // Xóa các liên kết embed video
-        document.getElementById("videoBox").innerHTML = "";
-
-        // Reset mảng videoLinks và nextPageToken
-        videoLinks = [];
-        nextPageToken = null;
-
-        showToast("Dữ liệu đã được làm mới!");
+        document.getElementById("videoBox").style.display = "none";
+        document.getElementById("jsonBox").style.display = "none";
+        resetState();
+        showToast("Đã xóa dữ liệu");
       }
 
-      // Xóa lịch sử
       function clearHistory() {
-        history = [];
-        localStorage.setItem("history", JSON.stringify(history));
-        displayHistory();
-        showToast("Đã xóa lịch sử.");
+        if (confirm("Bạn có chắc chắn muốn xóa lịch sử không?")) {
+          history = [];
+          localStorage.setItem("history", "[]");
+          displayHistory();
+          showToast("Xóa lịch sử");
+        }
       }
 
-      // Hiển thị lịch sử ngay khi tải trang
+      function resetState() {
+        nextPageToken = null;
+        videoLinks = [];
+        videoDetails = [];
+        document.getElementById("videoBox").innerHTML = "";
+      }
+
+      function toggleJsonBox() {
+        const jsonBox = document.getElementById("jsonBox");
+        // Chuyển đổi giữa trạng thái ẩn/hiện
+        if (jsonBox.style.display === "none") {
+          jsonBox.style.display = "block";
+          jsonBox.textContent = JSON.stringify(videoDetails, null, 2); // Cập nhật nội dung JSON ngay lập tức
+        } else {
+          jsonBox.style.display = "none";
+        }
+      }
+
       displayHistory();
     </script>
   </body>
